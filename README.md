@@ -169,6 +169,8 @@ Each flavour features its own:
 - Gemini (Animation Assets)
 - Custom Motion Design
 - Frame Sequence Optimisation
+- Google Flow 
+  
 
 ---
 

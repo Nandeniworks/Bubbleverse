@@ -1,0 +1,56 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #000000;
+  --foreground: #E7D8C9;
+  --cream: #FFF8F1;
+  --beige: #E7D8C9;
+  --caramel: #B56A2D;
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  overflow-x: hidden;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #000000;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #161616;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #2c2c2c;
+}
+
+/* Custom typography classes */
+.font-serif {
+  font-family: var(--font-serif), Cormorant Garamond, "PP Editorial New", Canela, Georgia, serif;
+}
+
+.font-sans {
+  font-family: var(--font-sans), Inter, system-ui, sans-serif;
+}
+
+/* Custom visual glow / backdrop classes */
+.radial-dark-glow {
+  background: radial-gradient(circle at 50% 50%, rgba(181, 106, 45, 0.08) 0%, rgba(0, 0, 0, 0) 70%);
+}
+
+.caramel-gradient-text {
+  background: linear-gradient(135deg, #FFF8F1 0%, #E7D8C9 50%, #B56A2D 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}

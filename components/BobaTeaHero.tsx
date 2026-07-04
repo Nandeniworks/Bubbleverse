@@ -44,7 +44,7 @@ export default function BobaTeaHero({ selectedFlavor, scrollYProgress }: BobaTea
   // Draw Specific Image on Canvas with COVER scaling
   const drawSpecificImage = (img: HTMLImageElement) => {
     const canvas = canvasRef.current;
-    if (!canvas || !img || !img.complete) return;
+    if (!canvas || !img || !img.complete || img.naturalWidth === 0) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
@@ -70,7 +70,7 @@ export default function BobaTeaHero({ selectedFlavor, scrollYProgress }: BobaTea
     const dpr = window.devicePixelRatio || 1;
 
     // Implement cinematic crossfade between previous loaded flavor and current flavor
-    if (crossfadeSourceRef.current && crossfadeProgressRef.current < 1.0) {
+    if (crossfadeSourceRef.current && crossfadeSourceRef.current.naturalWidth > 0 && crossfadeProgressRef.current < 1.0) {
       // 1. Draw old image with alpha
       ctx.globalAlpha = 1.0 - crossfadeProgressRef.current;
       ctx.drawImage(
@@ -122,9 +122,9 @@ export default function BobaTeaHero({ selectedFlavor, scrollYProgress }: BobaTea
 
   // Draw appropriate frame from cache, fallback to first frame if preloading sequence
   const drawFrame = (index: number) => {
-    if (isPreloaded && imagesRef.current[index]) {
+    if (isPreloaded && imagesRef.current[index] && imagesRef.current[index].naturalWidth > 0) {
       drawSpecificImage(imagesRef.current[index]);
-    } else if (firstFrameImgRef.current) {
+    } else if (firstFrameImgRef.current && firstFrameImgRef.current.naturalWidth > 0) {
       drawSpecificImage(firstFrameImgRef.current);
     }
   };

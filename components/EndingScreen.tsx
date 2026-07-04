@@ -162,7 +162,7 @@ export default function EndingScreen({ isVisible }: EndingScreenProps) {
           <g>
             {/* Cup 1: Brown Sugar */}
             <image
-              href="/sequences/brown-sugar/frame_000.webp"
+              href="/sequences/Brown-Sugar/frame_000.webp"
               x="170"
               y="380"
               width="100"
@@ -172,7 +172,7 @@ export default function EndingScreen({ isVisible }: EndingScreenProps) {
             />
             {/* Cup 2: Matcha */}
             <image
-              href="/sequences/matcha/ezgif-frame-001.jpg"
+              href="/sequences/Matcha/ezgif-frame-001.jpg"
               x="330"
               y="380"
               width="100"
@@ -182,7 +182,7 @@ export default function EndingScreen({ isVisible }: EndingScreenProps) {
             />
             {/* Cup 3: Strawberry */}
             <image
-              href="/sequences/strawberry/ezgif-frame-001.jpg"
+              href="/sequences/Strawberry/ezgif-frame-001.jpg"
               x="490"
               y="380"
               width="100"
@@ -192,7 +192,7 @@ export default function EndingScreen({ isVisible }: EndingScreenProps) {
             />
             {/* Cup 4: Blueberry */}
             <image
-              href="/sequences/blueberry/ezgif-frame-001.jpg"
+              href="/sequences/Blueberry/ezgif-frame-001.jpg"
               x="650"
               y="380"
               width="100"
@@ -202,7 +202,7 @@ export default function EndingScreen({ isVisible }: EndingScreenProps) {
             />
             {/* Cup 5: Taro */}
             <image
-              href="/sequences/taro/ezgif-frame-001.jpg"
+              href="/sequences/Taro/ezgif-frame-001.jpg"
               x="810"
               y="380"
               width="100"

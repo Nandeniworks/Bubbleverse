@@ -50,7 +50,7 @@ Rather than clicking through pages, users naturally **discover** each flavour as
 
 ---
 
-# 💡 The Inspiration
+# The Inspiration
 
 The project started as a simple Bubble Tea website.
 
@@ -64,7 +64,7 @@ I wanted them to **feel like they were walking through a digital exhibition dedi
 
 ---
 
-# 🚀 What I Learned
+#  What I Learned
 
 This project pushed me far beyond traditional frontend development.
 
@@ -74,7 +74,7 @@ I learned how scrolling itself can become part of the narrative instead of simpl
 
 ---
 
-## 🖼 Frame-by-frame Animation
+## Frame-by-frame Animation
 
 One of the biggest challenges was experimenting with frame sequence rendering.
 
@@ -82,7 +82,7 @@ Instead of embedding videos directly, I converted animations into hundreds of im
 
 ---
 
-## 🎨 Motion Design
+## Motion Design
 
 Throughout this project I explored:
 
@@ -95,7 +95,7 @@ Throughout this project I explored:
 
 ---
 
-## 🎯 UI / UX Design
+##  UI / UX Design
 
 I gained a much better understanding of:
 
@@ -146,7 +146,7 @@ Each flavour features its own:
 
 ---
 
-# 🛠 Tech Stack
+#  Tech Stack
 
 ## Frontend
 
@@ -225,19 +225,11 @@ npm run build
 
 🔗 **Vercel Deployment**
 
-> *(Add your Vercel URL here)*
-
----
-
-# 📸 Preview
-
-> Add screenshots or a short GIF showcasing the scrolling experience.
-
+> *https://bubbleverse-qevo46ucq-nandeni-s-projects.vercel.app*
 ---
 
 # 🔮 Future Improvements
 
-- 🫧 Interactive Bubble Pop mini-game
 - 🎵 Dynamic ambient soundtracks for every flavour
 - 🏆 Achievement & exploration system
 - 🍹 Build-your-own Bubble Tea experience

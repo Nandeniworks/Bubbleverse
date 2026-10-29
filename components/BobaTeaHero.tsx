@@ -12,17 +12,11 @@ interface BobaTeaHeroProps {
 
 export default function BobaTeaHero({ selectedFlavor, scrollYProgress }: BobaTeaHeroProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const imagesRef = useRef<HTMLImageElement[]>([]);
-  const firstFrameImgRef = useRef<HTMLImageElement | null>(null);
-
-  // Crossfade transition refs
-  const lastDrawnImageRef = useRef<HTMLImageElement | null>(null);
-  const crossfadeSourceRef = useRef<HTMLImageElement | null>(null);
-  const crossfadeProgressRef = useRef<number>(1.0);
+  const sequenceCache = useRef<Record<string, HTMLImageElement[]>>({});
+  const firstFramesRef = useRef<Record<string, HTMLImageElement>>({});
 
   const [isLoading, setIsLoading] = useState(true);
   const [loadPercentage, setLoadPercentage] = useState(0);
-  const [isPreloaded, setIsPreloaded] = useState(false);
 
   // Scroll Velocity to drive Spring Tilt and Jiggle physics
   const scrollVelocity = useVelocity(scrollYProgress);
@@ -38,154 +32,132 @@ export default function BobaTeaHero({ selectedFlavor, scrollYProgress }: BobaTea
   const jiggleY = useTransform(springVelocity, [-0.5, 0.5], [-20, 20]);
   const tiltRotate = useTransform(springVelocity, [-0.5, 0.5], [-3, 3]);
 
-  // Fade out canvas cup when scrolling into the Ending Screen (progress 0.94 to 0.96)
-  const canvasOpacity = useTransform(scrollYProgress, [0.94, 0.96], [1, 0]);
+  // Fade out canvas cup when scrolling into the Sanrio Section (progress 0.67 to 0.70)
+  const canvasOpacity = useTransform(scrollYProgress, [0.67, 0.70], [1, 0]);
 
-  // Draw Specific Image on Canvas with COVER scaling
-  const drawSpecificImage = (img: HTMLImageElement) => {
+  const getFrameForFlavor = (flavorIdx: number, scaledProgress: number) => {
+    const flavor = FLAVORS[flavorIdx];
+    if (!flavor) return null;
+
+    const totalFlavors = FLAVORS.length;
+    const start = flavorIdx / totalFlavors;
+    const end = (flavorIdx + 1) / totalFlavors;
+    
+    const localProgress = Math.max(0, Math.min(1, (scaledProgress - start) / (end - start)));
+    const totalFrames = flavor.totalFrames;
+    const frameIndex = Math.min(totalFrames - 1, Math.max(0, Math.floor(localProgress * totalFrames)));
+
+    const seq = sequenceCache.current[flavor.id];
+    if (seq && seq[frameIndex] && seq[frameIndex].naturalWidth > 0) {
+      return seq[frameIndex];
+    }
+    return firstFramesRef.current[flavor.id];
+  };
+
+  const redrawCurrentFrame = (latestProgress: number) => {
     const canvas = canvasRef.current;
-    if (!canvas || !img || !img.complete || img.naturalWidth === 0) return;
+    if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    // Clear canvas
+    const totalFlavors = FLAVORS.length;
+    const scaledProgress = latestProgress / 0.6896; // 0.6896 is the total width of flavors
+    const exactIndex = scaledProgress * totalFlavors;
+    
+    const nearestBoundary = Math.round(exactIndex);
+    const dist = exactIndex - nearestBoundary;
+    
+    const TRANSITION_HALF_WIDTH = 0.2;
+    let currentFlavorIdx = Math.floor(exactIndex);
+    let nextFlavorIdx = currentFlavorIdx;
+    let transitionProgress = 0;
+
+    if (nearestBoundary > 0 && nearestBoundary < totalFlavors) {
+      if (dist > -TRANSITION_HALF_WIDTH && dist < TRANSITION_HALF_WIDTH) {
+        currentFlavorIdx = nearestBoundary - 1;
+        nextFlavorIdx = nearestBoundary;
+        transitionProgress = (dist + TRANSITION_HALF_WIDTH) / (TRANSITION_HALF_WIDTH * 2);
+      } else {
+        currentFlavorIdx = Math.max(0, Math.min(totalFlavors - 1, Math.floor(exactIndex)));
+        nextFlavorIdx = currentFlavorIdx;
+      }
+    } else {
+      currentFlavorIdx = Math.max(0, Math.min(totalFlavors - 1, Math.floor(exactIndex)));
+      nextFlavorIdx = currentFlavorIdx;
+    }
+
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Get source dimensions dynamically
-    const imgWidth = img.naturalWidth || img.width || 1280;
-    const imgHeight = img.naturalHeight || img.height || 720;
+    const drawTransformed = (img: HTMLImageElement | undefined | null, alpha: number, scaleMult: number) => {
+      if (!img || img.naturalWidth === 0) return;
+      
+      const imgWidth = img.naturalWidth || img.width || 1280;
+      const imgHeight = img.naturalHeight || img.height || 720;
+      const clientWidth = canvas.width / (window.devicePixelRatio || 1);
+      const clientHeight = canvas.height / (window.devicePixelRatio || 1);
+      
+      const baseScale = Math.max(clientWidth / imgWidth, clientHeight / imgHeight);
+      const finalScale = baseScale * scaleMult;
+      
+      const drawWidth = imgWidth * finalScale;
+      const drawHeight = imgHeight * finalScale;
+      const dx = (clientWidth - drawWidth) / 2;
+      const dy = (clientHeight - drawHeight) / 2;
+      const dpr = window.devicePixelRatio || 1;
 
-    const clientWidth = canvas.width / (window.devicePixelRatio || 1);
-    const clientHeight = canvas.height / (window.devicePixelRatio || 1);
-
-    // Cover scaling calculation based on source dimensions
-    const scale = Math.max(clientWidth / imgWidth, clientHeight / imgHeight);
-    const drawWidth = imgWidth * scale;
-    const drawHeight = imgHeight * scale;
-
-    // Center offsets
-    const dx = (clientWidth - drawWidth) / 2;
-    const dy = (clientHeight - drawHeight) / 2;
-
-    const dpr = window.devicePixelRatio || 1;
-
-    // Implement cinematic crossfade between previous loaded flavor and current flavor
-    if (crossfadeSourceRef.current && crossfadeSourceRef.current.naturalWidth > 0 && crossfadeProgressRef.current < 1.0) {
-      // 1. Draw old image with alpha
-      ctx.globalAlpha = 1.0 - crossfadeProgressRef.current;
-      ctx.drawImage(
-        crossfadeSourceRef.current,
-        0,
-        0,
-        imgWidth,
-        imgHeight,
-        dx * dpr,
-        dy * dpr,
-        drawWidth * dpr,
-        drawHeight * dpr
-      );
-
-      // 2. Draw new image on top with alpha
-      ctx.globalAlpha = crossfadeProgressRef.current;
+      ctx.save();
+      ctx.globalAlpha = alpha;
       ctx.drawImage(
         img,
-        0,
-        0,
-        imgWidth,
-        imgHeight,
-        dx * dpr,
-        dy * dpr,
-        drawWidth * dpr,
-        drawHeight * dpr
+        0, 0, imgWidth, imgHeight,
+        dx * dpr, dy * dpr, drawWidth * dpr, drawHeight * dpr
       );
+      ctx.restore();
+    };
 
-      // Reset alpha
-      ctx.globalAlpha = 1.0;
+    if (transitionProgress > 0 && transitionProgress < 1 && currentFlavorIdx !== nextFlavorIdx) {
+      // Draw outgoing (fade out, slight scale down to push it back)
+      const imgOut = getFrameForFlavor(currentFlavorIdx, scaledProgress);
+      drawTransformed(imgOut, 1 - transitionProgress, 1 - (transitionProgress * 0.05));
+      
+      // Draw incoming (fade in, scale down from slightly enlarged to base)
+      const imgIn = getFrameForFlavor(nextFlavorIdx, scaledProgress);
+      drawTransformed(imgIn, transitionProgress, 1.05 - (transitionProgress * 0.05));
     } else {
-      // Draw normal target image
-      ctx.drawImage(
-        img,
-        0,
-        0,
-        imgWidth,
-        imgHeight,
-        dx * dpr,
-        dy * dpr,
-        drawWidth * dpr,
-        drawHeight * dpr
-      );
-    }
-
-    // Cache the drawn image in ref for subsequent crossfades
-    lastDrawnImageRef.current = img;
-  };
-
-  // Draw appropriate frame from cache, fallback to first frame if preloading sequence
-  const drawFrame = (index: number) => {
-    if (isPreloaded && imagesRef.current[index] && imagesRef.current[index].naturalWidth > 0) {
-      drawSpecificImage(imagesRef.current[index]);
-    } else if (firstFrameImgRef.current && firstFrameImgRef.current.naturalWidth > 0) {
-      drawSpecificImage(firstFrameImgRef.current);
+      // Draw standard single flavor
+      const img = getFrameForFlavor(currentFlavorIdx, scaledProgress);
+      drawTransformed(img, 1, 1);
     }
   };
 
-  // Helper to draw the frame using current global scroll state
-  const redrawCurrentFrame = (latestProgress: number) => {
-    const flavorIndex = FLAVORS.findIndex(f => f.id === selectedFlavor.id);
-    if (flavorIndex === -1) return;
+  useEffect(() => {
+    // Preload first frames of all flavors once on mount
+    FLAVORS.forEach(f => {
+      if (!firstFramesRef.current[f.id]) {
+        const img = new Image();
+        const firstNum = String(f.startFrame ?? 0).padStart(3, "0");
+        img.src = f.framePath.replace("{num}", firstNum);
+        img.onload = () => {
+          firstFramesRef.current[f.id] = img;
+          redrawCurrentFrame(scrollYProgress.get());
+        };
+      }
+    });
+  }, []);
 
-    // Compute the exact local progress of this flavor section (400vh out of 2100vh total height)
-    const start = (flavorIndex * 4) / 21;
-    const end = ((flavorIndex + 1) * 4) / 21;
-    const localProgress = Math.max(0, Math.min(1, (latestProgress - start) / (end - start)));
-
-    const totalFrames = selectedFlavor.totalFrames;
-    const frameIndex = Math.min(totalFrames - 1, Math.max(0, Math.floor(localProgress * totalFrames)));
-    drawFrame(frameIndex);
-  };
-
-  // Preload frames in background and handle sequence transition cleanups
+  // Preload full frames sequence in background for the active flavor
   useEffect(() => {
     let active = true;
 
-    // Capture the previously drawn image to crossfade from
-    if (lastDrawnImageRef.current) {
-      crossfadeSourceRef.current = lastDrawnImageRef.current;
-      crossfadeProgressRef.current = 0.0;
+    if (sequenceCache.current[selectedFlavor.id]) {
+      if (isLoading) setIsLoading(false);
+      redrawCurrentFrame(scrollYProgress.get());
+      return;
     }
-
-    // Reset preloading states
-    setIsPreloaded(false);
-    imagesRef.current = [];
-    firstFrameImgRef.current = null;
 
     const totalFrames = selectedFlavor.totalFrames;
     const startFrame = selectedFlavor.startFrame ?? 0;
 
-    // Load first frame immediately to display static flavor outline
-    const firstImg = new Image();
-    const firstNum = String(startFrame).padStart(3, "0");
-    firstImg.src = selectedFlavor.framePath.replace("{num}", firstNum);
-    firstImg.onload = () => {
-      if (!active) return;
-      firstFrameImgRef.current = firstImg;
-      
-      // Draw first frame immediately
-      drawSpecificImage(firstImg);
-
-      // Start crossfade animation loop (approx 1s duration)
-      const animateCrossfade = () => {
-        if (!active) return;
-        if (crossfadeProgressRef.current < 1.0) {
-          crossfadeProgressRef.current = Math.min(1.0, crossfadeProgressRef.current + 0.02); // ~50 frames, ~800ms
-          redrawCurrentFrame(scrollYProgress.get());
-          requestAnimationFrame(animateCrossfade);
-        }
-      };
-      animateCrossfade();
-    };
-
-    // Load full sequence in background
     const loadedImages: HTMLImageElement[] = [];
     let loadedCount = 0;
 
@@ -193,21 +165,16 @@ export default function BobaTeaHero({ selectedFlavor, scrollYProgress }: BobaTea
       if (!active) return;
       loadedCount++;
       
-      // Update loading overlay only on initial page steeping
       if (isLoading) {
         setLoadPercentage(Math.round((loadedCount / totalFrames) * 100));
       }
 
       if (loadedCount === totalFrames) {
         if (active) {
-          imagesRef.current = loadedImages;
-          setIsPreloaded(true);
-          
+          sequenceCache.current[selectedFlavor.id] = loadedImages;
           if (isLoading) {
             setIsLoading(false);
           }
-
-          // Trigger redraw with the full loaded sequence at the current scroll position
           redrawCurrentFrame(scrollYProgress.get());
         }
       }
@@ -229,7 +196,7 @@ export default function BobaTeaHero({ selectedFlavor, scrollYProgress }: BobaTea
     return () => {
       active = false;
     };
-  }, [selectedFlavor]);
+  }, [selectedFlavor, isLoading]);
 
   // Handle resize and setup canvas dimensions
   useEffect(() => {
@@ -254,7 +221,7 @@ export default function BobaTeaHero({ selectedFlavor, scrollYProgress }: BobaTea
     handleResize();
 
     return () => window.removeEventListener("resize", handleResize);
-  }, [scrollYProgress, selectedFlavor, isPreloaded]);
+  }, [scrollYProgress, selectedFlavor]);
 
   // Listen to scroll updates at 60fps
   useMotionValueEvent(scrollYProgress, "change", (latest) => {

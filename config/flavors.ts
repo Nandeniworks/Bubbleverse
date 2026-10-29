@@ -5,6 +5,13 @@ export interface StoryBeat {
   description: string;
 }
 
+export interface FlavorMetadata {
+  origin: string;
+  profile: string;
+  sweetness: string;
+  texture: string;
+}
+
 export interface Flavor {
   id: string;
   name: string;
@@ -18,6 +25,7 @@ export interface Flavor {
   subtitleColor: string;
   bodyColor: string;
   startFrame?: number; // 0-based or 1-based start frame index
+  metadata: FlavorMetadata;
   beats: StoryBeat[];
 }
 
@@ -35,6 +43,12 @@ export const FLAVORS: Flavor[] = [
     subtitleColor: "#C68C55",
     bodyColor: "#E6C9A7",
     startFrame: 0,
+    metadata: {
+      origin: "Okinawa, Japan",
+      profile: "Rich · Creamy · Caramel",
+      sweetness: "● ● ● ● ○",
+      texture: "Chewy · Smooth"
+    },
     beats: [
       {
         num: "01",
@@ -75,6 +89,12 @@ export const FLAVORS: Flavor[] = [
     subtitleColor: "#769951",
     bodyColor: "#C7D9B5",
     startFrame: 1,
+    metadata: {
+      origin: "Uji, Kyoto, Japan",
+      profile: "Earthy · Umami · Vegetal",
+      sweetness: "● ● ○ ○ ○",
+      texture: "Frothy · Silky"
+    },
     beats: [
       {
         num: "01",
@@ -115,6 +135,12 @@ export const FLAVORS: Flavor[] = [
     subtitleColor: "#C56475",
     bodyColor: "#F1C8D0",
     startFrame: 1,
+    metadata: {
+      origin: "California, USA",
+      profile: "Fruity · Bright · Floral",
+      sweetness: "● ● ● ○ ○",
+      texture: "Light · Refreshing"
+    },
     beats: [
       {
         num: "01",
@@ -155,6 +181,12 @@ export const FLAVORS: Flavor[] = [
     subtitleColor: "#5B6DC8",
     bodyColor: "#CAD3F7",
     startFrame: 1,
+    metadata: {
+      origin: "Maine, USA",
+      profile: "Tart · Berry · Bergamot",
+      sweetness: "● ● ○ ○ ○",
+      texture: "Smooth · Layered"
+    },
     beats: [
       {
         num: "01",
@@ -195,6 +227,12 @@ export const FLAVORS: Flavor[] = [
     subtitleColor: "#916AC8",
     bodyColor: "#E5D8F7",
     startFrame: 1,
+    metadata: {
+      origin: "Taiwan",
+      profile: "Nutty · Starchy · Vanilla",
+      sweetness: "● ● ● ○ ○",
+      texture: "Dense · Velvety"
+    },
     beats: [
       {
         num: "01",

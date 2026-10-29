@@ -7,7 +7,7 @@ import BubbleCursor from "@/components/BubbleCursor";
 import ParticleBackground from "@/components/ParticleBackground";
 import CondensationDroplets from "@/components/CondensationDroplets";
 import OriginMap from "@/components/OriginMap";
-import EndingScreen from "@/components/EndingScreen";
+import SanrioCollabSection from "@/components/SanrioCollabSection";
 import { FLAVORS, Flavor } from "@/config/flavors";
 
 // Dynamic ingredients data lookup
@@ -52,7 +52,7 @@ const INGREDIENTS_DATA: Record<string, { name: string; desc: string }[]> = {
 export default function Home() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [selectedFlavor, setSelectedFlavor] = useState<Flavor>(FLAVORS[0]);
-  const [showEnding, setShowEnding] = useState(false);
+  const [inSanrioSection, setInSanrioSection] = useState(false);
 
   // Track global scroll progress of the entire page
   const { scrollYProgress } = useScroll({
@@ -62,19 +62,19 @@ export default function Home() {
 
   // Dynamically change active flavor based on scroll thresholds
   useMotionValueEvent(scrollYProgress, "change", (latest) => {
-    // There are 5 flavor segments (0..2000vh) + 1 ending segment (2000vh..2100vh).
-    // The flavors take up the range 0 to 0.952.
-    if (latest < 0.952) {
+    // 5 flavor segments (0..2000vh) + 1 Sanrio (1000vh)
+    // The flavors take up the range 0 to 0.6666.
+    if (latest < 0.6666) {
       const totalFlavors = FLAVORS.length;
-      const scaledProgress = latest / 0.952;
+      const scaledProgress = latest / 0.6666;
       const index = Math.min(totalFlavors - 1, Math.floor(scaledProgress * totalFlavors));
       if (FLAVORS[index] && FLAVORS[index].id !== selectedFlavor.id) {
         setSelectedFlavor(FLAVORS[index]);
       }
     }
     
-    // Toggle ending screen visibility
-    setShowEnding(latest >= 0.95);
+    // Toggle whether we are in the Sanrio section to hide early elements
+    setInSanrioSection(latest >= 0.6666);
   });
 
   // Jump to specific flavor section by scrolling the window
@@ -85,13 +85,40 @@ export default function Home() {
     });
   };
 
+  const bgInput: number[] = [];
+  const bgOutput: string[] = [];
+  const segment = 0.6666 / FLAVORS.length;
+  const transitionHalfWidth = segment * 0.2;
+  
+  FLAVORS.forEach((f, i) => {
+    const start = i * segment;
+    if (i === 0) {
+      bgInput.push(0);
+      bgOutput.push(f.backgroundColor);
+    } else {
+      bgInput.push(start - transitionHalfWidth);
+      bgOutput.push(FLAVORS[i - 1].backgroundColor);
+      bgInput.push(start + transitionHalfWidth);
+      bgOutput.push(f.backgroundColor);
+    }
+    if (i === FLAVORS.length - 1) {
+      bgInput.push(0.6666);
+      bgOutput.push(f.backgroundColor);
+    }
+  });
+  
+  bgInput.push(0.68, 1);
+  bgOutput.push("#FFFBFB", "#FFFBFB");
+
+  const backgroundColor = useTransform(scrollYProgress, bgInput, bgOutput);
+
   return (
-    <div 
+    <motion.div 
       ref={containerRef}
-      className="relative min-h-screen text-[#E7D8C9] font-sans transition-colors duration-1000 ease-in-out select-none"
+      className="relative min-h-screen text-[#E7D8C9] font-sans select-none"
       style={{ 
-        backgroundColor: showEnding ? "#000000" : selectedFlavor.backgroundColor,
-        height: `${FLAVORS.length * 400 + 100}vh` // 5 * 400vh + 100vh = 2100vh
+        backgroundColor,
+        height: `${FLAVORS.length * 400 + 1000}vh` // 5 * 400vh + 1000vh = 3000vh
       }}
     >
       <style dangerouslySetInnerHTML={{__html: `
@@ -124,10 +151,10 @@ export default function Home() {
       <BubbleCursor />
 
       {/* 2. Dynamic Flavor-Themed Background Particles */}
-      {!showEnding && <ParticleBackground selectedFlavorId={selectedFlavor.id} />}
+      {!inSanrioSection && <ParticleBackground selectedFlavorId={selectedFlavor.id} />}
 
       {/* 3. Condensation Water Droplets Overlay */}
-      {!showEnding && <CondensationDroplets />}
+      {!inSanrioSection && <CondensationDroplets />}
 
       {/* Fixed Minimal Branding Header */}
       <header className="fixed top-0 left-0 w-full z-40 px-6 py-6 md:px-12 md:py-8 flex justify-between items-center pointer-events-none">
@@ -154,31 +181,19 @@ export default function Home() {
           />
         ))}
         
-        {/* Cinematic Ending Screen */}
-        <div className="relative w-full h-[100vh] z-20">
-          <EndingScreen isVisible={showEnding} />
-        </div>
+        {/* Sanrio Collaboration Campaign */}
+        <SanrioCollabSection />
       </div>
 
-      {/* Floating Glassmorphic Flavor Selector (Temporary / Testing) */}
-      {!showEnding && (
-        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-30 bg-black/40 backdrop-blur-md px-4 py-2 rounded-full border border-white/10 flex gap-2">
-          {FLAVORS.map((flavor, index) => (
-            <button
-              key={flavor.id}
-              onClick={() => scrollToSection(index)}
-              className={`px-3 py-1.5 text-[10px] tracking-widest uppercase border rounded-full transition-all duration-300 ${
-                selectedFlavor.id === flavor.id
-                  ? "bg-[#FFF8F1] text-black border-[#FFF8F1]"
-                  : "text-[#E7D8C9] border-[#E7D8C9]/10 hover:border-[#E7D8C9]/30"
-              }`}
-            >
-              {flavor.name}
-            </button>
-          ))}
-        </div>
+      {/* Subtly Animated Horizontal Flavor Progress Navigation */}
+      {!inSanrioSection && (
+        <FlavorProgressNav 
+          selectedFlavor={selectedFlavor} 
+          scrollToSection={scrollToSection} 
+          scrollYProgress={scrollYProgress} 
+        />
       )}
-    </div>
+    </motion.div>
   );
 }
 
@@ -219,39 +234,7 @@ interface BeatCardProps {
   sectionScrollYProgress: MotionValue<number>;
 }
 
-const HERO_COLORS: Record<string, { title: string; label: string; paragraph: string }> = {
-  "brown-sugar": {
-    title: "#4A2C1A",
-    label: "#5C3A24",
-    paragraph: "#6A4730"
-  },
-  "matcha": {
-    title: "#1C3019",
-    label: "#2B4427",
-    paragraph: "#3A5435"
-  },
-  "strawberry": {
-    title: "#401019",
-    label: "#511C25",
-    paragraph: "#622832"
-  },
-  "blueberry": {
-    title: "#10193F",
-    label: "#202B51",
-    paragraph: "#303D62"
-  },
-  "taro": {
-    title: "#2E143E",
-    label: "#3F2251",
-    paragraph: "#503164"
-  }
-};
 
-const HERO_PLACEMENTS: Record<string, { top?: string; left?: string }> = {
-  "strawberry": { top: "80px" },
-  "blueberry": { top: "50px", left: "-60px" },
-  "taro": { top: "80px" }
-};
 
 function BeatCard({ beatIndex, flavor, sectionScrollYProgress }: BeatCardProps) {
   const start = beatIndex * 0.25;
@@ -269,139 +252,195 @@ function BeatCard({ beatIndex, flavor, sectionScrollYProgress }: BeatCardProps) 
   const y = useTransform(
     sectionScrollYProgress,
     [start, start + 0.05, end - 0.05, end],
-    [50, 0, 0, -50]
+    [80, 20, -20, -80]
   );
 
-  // Floating cards transforms for Beat 4 (index 3) - declared at top-level to satisfy Rules of Hooks
+  // Staggered micro-interactions for Beat 1
+  const labelOpacity = useTransform(sectionScrollYProgress, [start, start + 0.02], [0, 1]);
+  const titleY = useTransform(sectionScrollYProgress, [start + 0.01, start + 0.04, end - 0.05, end], [80, 0, -20, -100]);
+  const titleOpacity = useTransform(sectionScrollYProgress, [start + 0.01, start + 0.04, end - 0.05, end], [0, 1, 1, 0]);
+  const descY = useTransform(sectionScrollYProgress, [start + 0.03, start + 0.06, end - 0.05, end], [60, 0, -20, -100]);
+  const descOpacity = useTransform(sectionScrollYProgress, [start + 0.03, start + 0.06, end - 0.05, end], [0, 1, 1, 0]);
+
+  // Floating cards transforms for Beat 4 (index 3)
   const opacityCard1 = useTransform(sectionScrollYProgress, [0.75, 0.80, 0.90, 0.95], [0, 1, 1, 0]);
   const yCard1 = useTransform(sectionScrollYProgress, [0.75, 0.80, 0.90, 0.95], [40, 0, 0, -40]);
 
   const opacityCard2 = useTransform(sectionScrollYProgress, [0.82, 0.87, 0.95, 1.0], [0, 1, 1, 0]);
   const yCard2 = useTransform(sectionScrollYProgress, [0.82, 0.87, 0.95, 1.0], [40, 0, 0, -40]);
 
-  const splitTitle = (title: string) => {
-    const words = title.split(" ");
-    if (words.length <= 2) {
-      return { prefix: words[0] || "", suffix: words.slice(1).join(" ") };
-    }
-    const prefix = words.slice(0, -2).join(" ");
-    const suffix = words.slice(-2).join(" ");
-    return { prefix, suffix };
-  };
-
   const accentColor = flavor.accentColor;
 
-  // Beat 1: Title Header Intro (Epic centered layout)
+  // Beat 1: Title Header Intro (Premium Editorial Layouts)
   if (beatIndex === 0) {
-    const { prefix, suffix } = splitTitle(flavor.title);
-    const heroColors = HERO_COLORS[flavor.id] || {
-      title: flavor.titleColor,
-      label: flavor.subtitleColor,
-      paragraph: flavor.bodyColor
-    };
-    const heroPlacement = HERO_PLACEMENTS[flavor.id] || {};
-    return (
-      <div className="h-screen w-full flex items-center justify-center relative">
-        <motion.div
-          style={{ opacity, y, position: "relative", ...heroPlacement }}
-          className="w-full max-w-4xl px-6 flex flex-col items-center text-center justify-center"
-        >
-          <span 
-            style={{ 
-              color: heroColors.label,
-              textShadow: "0 2px 8px rgba(0,0,0,0.18)"
-            }}
-            className="font-sans text-[10px] md:text-xs tracking-[0.35em] uppercase font-semibold mb-6 block animate-fade-in animate-pulse"
-          >
-            THE ART OF BOBA
-          </span>
-          <h1 
-            style={{ 
-              color: heroColors.title,
-              textShadow: "0 2px 8px rgba(0,0,0,0.18)"
-            }}
-            className="font-serif text-5xl md:text-8xl font-extralight tracking-wide leading-tight mb-8"
-          >
-            {prefix} <br className="hidden md:block" />
-            <span 
-              className="italic font-light"
-              style={{
-                color: heroColors.title,
-                textShadow: "0 2px 8px rgba(0,0,0,0.18)"
-              }}
+
+    const renderTextShadow = (color: string) => `0 4px 32px ${color}80, 0 2px 8px rgba(0,0,0,0.6)`;
+
+    if (flavor.id === "brown-sugar" || flavor.id === "matcha") {
+      const parts = flavor.title.split(" ");
+      const word1 = parts[0];
+      const word2 = parts.slice(1).join(" ");
+      return (
+        <div className="h-screen w-full flex items-center justify-center relative pointer-events-none">
+          <div className="w-full max-w-4xl px-6 flex flex-col items-center text-center justify-center relative z-20">
+            <motion.span 
+              style={{ opacity: labelOpacity, textShadow: renderTextShadow(flavor.backgroundColor) }}
+              className="font-sans text-[10px] md:text-xs tracking-[0.4em] uppercase font-semibold mb-6 block text-white/80"
             >
-              {suffix}
-            </span>
-          </h1>
-          <p 
-            style={{ 
-              color: heroColors.paragraph,
-              textShadow: "0 2px 8px rgba(0,0,0,0.18)"
-            }}
-            className="font-sans text-sm md:text-lg max-w-xl mx-auto leading-relaxed font-light mb-12 opacity-95"
-          >
-            {flavor.description}
-          </p>
-          <div className="w-[1px] h-12 bg-gradient-to-b from-[#FFF8F1] to-transparent animate-pulse" />
-        </motion.div>
-      </div>
-    );
+              THE ART OF BOBA
+            </motion.span>
+            <motion.h1 
+              style={{ opacity: titleOpacity, y: titleY, color: flavor.titleColor, textShadow: renderTextShadow(flavor.backgroundColor) }}
+              className="font-serif text-7xl md:text-[9rem] font-light tracking-tighter leading-[0.85] mb-8"
+            >
+              {word1} <br/>
+              <span className="italic font-extralight block" style={{ color: flavor.accentColor }}>{word2}</span>
+            </motion.h1>
+            <motion.p 
+              style={{ opacity: descOpacity, y: descY, color: flavor.bodyColor, textShadow: renderTextShadow(flavor.backgroundColor) }}
+              className="font-sans text-sm md:text-base max-w-md mx-auto leading-relaxed font-light mt-4"
+            >
+              {flavor.description}
+            </motion.p>
+          </div>
+        </div>
+      );
+    }
+
+    if (flavor.id === "strawberry") {
+      // Split asymmetrically to avoid the center splash
+      return (
+        <div className="h-screen w-full relative pointer-events-none px-6 md:px-24">
+          <div className="absolute top-[15%] left-[5%] md:left-[10%] z-20">
+            <motion.span 
+              style={{ opacity: labelOpacity, textShadow: renderTextShadow(flavor.backgroundColor) }}
+              className="font-sans text-[10px] md:text-xs tracking-[0.4em] uppercase font-semibold mb-6 block text-white/80"
+            >
+              THE ART OF BOBA
+            </motion.span>
+            <motion.h1 
+              style={{ opacity: titleOpacity, y: titleY, color: flavor.titleColor, textShadow: renderTextShadow(flavor.backgroundColor) }}
+              className="font-serif text-7xl md:text-[8rem] font-light tracking-tighter leading-[0.85]"
+            >
+              STRAW<br/>BERRY
+            </motion.h1>
+          </div>
+          <div className="absolute bottom-[20%] right-[5%] md:right-[10%] z-20 text-right max-w-sm">
+            <motion.h2
+              style={{ opacity: titleOpacity, y: titleY, color: flavor.accentColor, textShadow: renderTextShadow(flavor.backgroundColor) }}
+              className="font-serif italic text-5xl md:text-7xl font-extralight mb-6"
+            >
+              Infusion
+            </motion.h2>
+            <motion.p 
+              style={{ opacity: descOpacity, y: descY, color: flavor.bodyColor, textShadow: renderTextShadow(flavor.backgroundColor) }}
+              className="font-sans text-sm md:text-base leading-relaxed font-light ml-auto"
+            >
+              {flavor.description}
+            </motion.p>
+          </div>
+        </div>
+      );
+    }
+
+    if (flavor.id === "blueberry") {
+      // Top-heavy layout to avoid the dark berry splash at the bottom
+      return (
+        <div className="h-screen w-full relative pointer-events-none px-6 md:px-24">
+          <div className="absolute top-[15%] right-[5%] md:right-[15%] z-20 text-right">
+            <motion.span 
+              style={{ opacity: labelOpacity, textShadow: renderTextShadow(flavor.backgroundColor) }}
+              className="font-sans text-[10px] md:text-xs tracking-[0.4em] uppercase font-semibold mb-6 block text-white/80"
+            >
+              THE ART OF BOBA
+            </motion.span>
+            <motion.h1 
+              style={{ opacity: titleOpacity, y: titleY, color: flavor.titleColor, textShadow: renderTextShadow(flavor.backgroundColor) }}
+              className="font-serif text-7xl md:text-[8rem] font-light tracking-tighter leading-[0.85]"
+            >
+              WILD <br/>
+              <span className="italic font-extralight" style={{ color: flavor.accentColor }}>BLUEBERRY</span>
+            </motion.h1>
+            <motion.p 
+              style={{ opacity: descOpacity, y: descY, color: flavor.bodyColor, textShadow: renderTextShadow(flavor.backgroundColor) }}
+              className="font-sans text-sm md:text-base leading-relaxed font-light mt-8 max-w-md ml-auto"
+            >
+              {flavor.description}
+            </motion.p>
+          </div>
+        </div>
+      );
+    }
+
+    if (flavor.id === "taro") {
+      // Top-left heavy layout to avoid bottom-right pearls
+      return (
+        <div className="h-screen w-full relative pointer-events-none px-6 md:px-24">
+          <div className="absolute top-[20%] left-[5%] md:left-[10%] z-20">
+            <motion.span 
+              style={{ opacity: labelOpacity, textShadow: renderTextShadow(flavor.backgroundColor) }}
+              className="font-sans text-[10px] md:text-xs tracking-[0.4em] uppercase font-semibold mb-6 block text-white/80"
+            >
+              THE ART OF BOBA
+            </motion.span>
+            <motion.h1 
+              style={{ opacity: titleOpacity, y: titleY, color: flavor.titleColor, textShadow: renderTextShadow(flavor.backgroundColor) }}
+              className="font-serif text-7xl md:text-[9rem] font-light tracking-tighter leading-[0.85]"
+            >
+              BESPOKE <br/>
+              <span className="italic font-extralight" style={{ color: flavor.accentColor }}>TARO</span>
+            </motion.h1>
+            <motion.p 
+              style={{ opacity: descOpacity, y: descY, color: flavor.bodyColor, textShadow: renderTextShadow(flavor.backgroundColor) }}
+              className="font-sans text-sm md:text-base leading-relaxed font-light mt-8 max-w-sm"
+            >
+              {flavor.description}
+            </motion.p>
+          </div>
+        </div>
+      );
+    }
   }
 
-  // Beat 2: Interactive Ingredients Experience (Elements float out from behind the centered cup)
+  // Beat 2: Interactive Ingredients Experience (Editorial list layout)
   if (beatIndex === 1) {
     const ingredients = INGREDIENTS_DATA[flavor.id] || [];
     
-    // Relative position layout around the cup with coordinate translation directions
-    const positions = [
-      { className: "left-[10%] md:left-[18%] top-[25%]", dx: -55, dy: -35 }, // Top Left
-      { className: "right-[10%] md:right-[18%] top-[25%]", dx: 55, dy: -35 }, // Top Right
-      { className: "left-1/2 -translate-x-1/2 top-[12%]", dx: 0, dy: -50 }, // Top Center
-      { className: "left-[10%] md:left-[18%] bottom-[25%]", dx: -55, dy: 35 }, // Bottom Left
-      { className: "right-[10%] md:right-[18%] bottom-[25%]", dx: 55, dy: 35 }, // Bottom Right
-    ];
-
     return (
-      <div className="h-screen w-full relative overflow-hidden flex items-center justify-center">
-        {/* Background Editorial Heading */}
+      <div className="h-screen w-full relative overflow-hidden flex items-center px-6 md:px-24">
         <motion.div 
-          style={{ opacity }}
-          className="absolute text-center select-none pointer-events-none z-10 flex flex-col items-center"
+          style={{ opacity, y }}
+          className="w-full max-w-sm flex flex-col items-start z-10"
         >
           <span 
             style={{ color: flavor.subtitleColor }}
-            className="font-sans text-[10px] tracking-[0.4em] uppercase block mb-2"
+            className="font-sans text-[10px] md:text-[11px] tracking-[0.4em] uppercase font-semibold block mb-4"
           >
             02 / Ingredients
           </span>
           <h2 
             style={{ color: flavor.titleColor }}
-            className="font-serif text-3xl md:text-5xl font-extralight tracking-wide leading-tight"
+            className="font-serif text-4xl md:text-5xl font-light tracking-wide leading-tight mb-12"
           >
-            Crafted from elements.
+            Crafted from <br/>
+            <span className="italic" style={{ color: flavor.accentColor }}>elements.</span>
           </h2>
-          <span className="text-[9px] uppercase tracking-widest text-[#E7D8C9]/30 mt-4 block">
-            Hover to inspect details
-          </span>
+          
+          <div className="flex flex-col gap-6 w-full">
+            {ingredients.map((ing, i) => (
+              <IngredientItem
+                key={i}
+                index={i}
+                name={ing.name}
+                desc={ing.desc}
+                progress={sectionScrollYProgress}
+                accentColor={accentColor}
+                titleColor={flavor.titleColor}
+                bodyColor={flavor.bodyColor}
+              />
+            ))}
+          </div>
         </motion.div>
-
-        {ingredients.map((ing, i) => {
-          const pos = positions[i] || { className: "", dx: 0, dy: 0 };
-          return (
-            <IngredientBubble
-              key={i}
-              name={ing.name}
-              desc={ing.desc}
-              className={pos.className}
-              opacity={opacity}
-              offsetX={pos.dx}
-              offsetY={pos.dy}
-              progress={sectionScrollYProgress}
-              accentColor={accentColor}
-              bodyColor={flavor.bodyColor}
-            />
-          );
-        })}
       </div>
     );
   }
@@ -424,19 +463,19 @@ function BeatCard({ beatIndex, flavor, sectionScrollYProgress }: BeatCardProps) 
             />
             <span 
               style={{ color: flavor.subtitleColor }}
-              className="font-sans text-xs tracking-[0.3em] uppercase font-semibold block mb-2"
+              className="font-sans text-[10px] tracking-[0.4em] uppercase font-semibold block mb-4"
             >
               03 / The Origin
             </span>
             <h2 
               style={{ color: flavor.titleColor }}
-              className="font-serif text-3xl md:text-5xl font-light leading-snug mb-4"
+              className="font-serif text-3xl md:text-5xl font-light leading-snug mb-6"
             >
               Cultivated with heritage.
             </h2>
             <p 
               style={{ color: flavor.bodyColor }}
-              className="font-sans text-sm md:text-base leading-relaxed font-light mb-6 opacity-95"
+              className="font-sans text-sm md:text-base leading-relaxed font-light mb-6 opacity-90"
             >
               Our {flavor.name} ingredients originate from regions rich in agricultural legacy. 
               {flavor.id === "brown-sugar" && " Hand-harvested sugarcane from the volcanic soil of Okinawa is simmered using techniques passed down through generations to create the ultimate smoky, rich glaze."}
@@ -449,92 +488,57 @@ function BeatCard({ beatIndex, flavor, sectionScrollYProgress }: BeatCardProps) 
         </motion.div>
       </div>
     );
-  }
-
-  // Beat 4: Flavor Profile & Fun Facts (Floating cards that fade in independently while scrolling)
+  }  // Beat 4: Flavor Profile (Minimal Editorial Metadata Grid)
   if (beatIndex === 3) {
-
-    const facts = {
-      "brown-sugar": {
-        profile: "Body: Full & Rich | Sweetness: Intensely Deep | Aroma: Roasted Sugarcane | Texture: Warm & Chewy",
-        fact: "Okinawa Kokuto sugar is cooked in large iron kettles for a distinct molasses aroma, providing a mineral-rich profile highly valued in culinary arts."
-      },
-      "matcha": {
-        profile: "Body: Creamy & Vegetal | Sweetness: Subtle | Aroma: Toasted Grass & Umami | Texture: Silky & Frothy",
-        fact: "Traditional granite stone mills grind Uji matcha extremely slowly—only 30g per hour—to prevent friction heat, protecting its signature bright green color."
-      },
-      "strawberry": {
-        profile: "Body: Light & Creamy | Sweetness: Bright & Fruity | Aroma: Fresh Berries & Jasmine | Texture: Soft & Refreshing",
-        fact: "Fragrant Jasmine tea serves as the liquid base, containing natural floral compounds that enhance the strawberry's volatile ester compounds."
-      },
-      "blueberry": {
-        profile: "Body: Medium-Full | Sweetness: Tart & Balanced | Aroma: Wild Berries & Bergamot | Texture: Smooth & Layered",
-        fact: "The natural citrus oil of Bergamot in Earl Grey tea cuts through the fat of organic milk, elevating the blueberry compote's tart finish."
-      },
-      "taro": {
-        profile: "Body: Starchy & Thick | Sweetness: Warm & Nutty | Aroma: Roasted Taro & Coconut | Texture: Dense & Velvety",
-        fact: "Raw taro root is naturally light gray. The beautiful pastel lavender color of premium Taro Boba comes from slow-baking purple yams together with the taro."
-      }
-    }[flavor.id] || { profile: "", fact: "" };
+    const meta = flavor.metadata;
 
     return (
-      <div className="h-screen w-full flex items-center justify-between px-6 md:px-24 relative">
-        {/* Floating Profile Card (Left, fades in earlier) */}
+      <div className="h-screen w-full flex flex-col md:flex-row items-end justify-between px-6 md:px-24 pb-24 md:pb-32 relative pointer-events-none">
+        
+        {/* Left Data Column */}
         <motion.div
           style={{ opacity: opacityCard1, y: yCard1 }}
-          className="w-full max-w-sm flex flex-col items-start text-left bg-black/60 backdrop-blur-md border border-white/10 p-8 rounded-2xl shadow-xl mr-auto"
+          className="w-full max-w-xs flex flex-col gap-12 z-10"
         >
-          <div 
-            style={{ backgroundColor: accentColor }}
-            className="w-8 h-[1px] mb-4"
-          />
-          <span 
-            style={{ color: flavor.subtitleColor }}
-            className="font-sans text-[10px] tracking-[0.3em] uppercase font-semibold block mb-2"
-          >
-            04 / Profile
-          </span>
-          <h3 
-            style={{ color: flavor.titleColor }}
-            className="font-serif text-2xl font-light mb-4"
-          >
-            Taste Symphony
-          </h3>
-          <p 
-            style={{ color: flavor.bodyColor }}
-            className="font-sans text-xs leading-relaxed font-light opacity-95"
-          >
-            {facts.profile}
-          </p>
+          <div>
+            <span style={{ color: flavor.subtitleColor }} className="font-sans text-[10px] tracking-[0.3em] uppercase font-semibold block mb-3">
+              ORIGIN
+            </span>
+            <p style={{ color: flavor.titleColor }} className="font-serif text-2xl font-light italic">
+              {meta.origin}
+            </p>
+          </div>
+          <div>
+            <span style={{ color: flavor.subtitleColor }} className="font-sans text-[10px] tracking-[0.3em] uppercase font-semibold block mb-3">
+              PROFILE
+            </span>
+            <p style={{ color: flavor.bodyColor }} className="font-sans text-sm tracking-wide font-light">
+              {meta.profile}
+            </p>
+          </div>
         </motion.div>
 
-        {/* Floating Did You Know Card (Right, fades in later) */}
+        {/* Right Data Column */}
         <motion.div
           style={{ opacity: opacityCard2, y: yCard2 }}
-          className="w-full max-w-sm flex flex-col items-start text-left bg-black/60 backdrop-blur-md border border-white/10 p-8 rounded-2xl shadow-xl ml-auto mt-24 md:mt-0"
+          className="w-full max-w-xs flex flex-col gap-12 z-10 text-left md:text-right mt-12 md:mt-0"
         >
-          <div 
-            style={{ backgroundColor: accentColor }}
-            className="w-8 h-[1px] mb-4"
-          />
-          <span 
-            style={{ color: flavor.subtitleColor }}
-            className="font-sans text-[10px] tracking-[0.3em] uppercase font-semibold block mb-2"
-          >
-            05 / Did You Know
-          </span>
-          <h3 
-            style={{ color: flavor.titleColor }}
-            className="font-serif text-2xl font-light mb-4"
-          >
-            Artisanal Fact
-          </h3>
-          <p 
-            style={{ color: flavor.bodyColor }}
-            className="font-sans text-xs leading-relaxed font-light opacity-95"
-          >
-            {facts.fact}
-          </p>
+          <div>
+            <span style={{ color: flavor.subtitleColor }} className="font-sans text-[10px] tracking-[0.3em] uppercase font-semibold block mb-3">
+              SWEETNESS
+            </span>
+            <p style={{ color: flavor.titleColor }} className="font-sans text-sm tracking-[0.2em]">
+              {meta.sweetness}
+            </p>
+          </div>
+          <div>
+            <span style={{ color: flavor.subtitleColor }} className="font-sans text-[10px] tracking-[0.3em] uppercase font-semibold block mb-3">
+              TEXTURE
+            </span>
+            <p style={{ color: flavor.bodyColor }} className="font-sans text-sm tracking-wide font-light">
+              {meta.texture}
+            </p>
+          </div>
         </motion.div>
       </div>
     );
@@ -543,49 +547,98 @@ function BeatCard({ beatIndex, flavor, sectionScrollYProgress }: BeatCardProps) 
   return null;
 }
 
-interface IngredientBubbleProps {
+interface IngredientItemProps {
+  index: number;
   name: string;
   desc: string;
-  className: string;
-  opacity: MotionValue<number>;
-  offsetX: number;
-  offsetY: number;
   progress: MotionValue<number>;
   accentColor: string;
+  titleColor: string;
   bodyColor: string;
 }
 
-function IngredientBubble({ name, desc, className, opacity, offsetX, offsetY, progress, accentColor, bodyColor }: IngredientBubbleProps) {
-  const [hovered, setHovered] = useState(false);
-  
-  // Drift translation offset as scroll progress advances through the beat
-  const tx = useTransform(progress, [0.25, 0.45], [0, offsetX]);
-  const ty = useTransform(progress, [0.25, 0.45], [0, offsetY]);
+function IngredientItem({ index, name, desc, progress, accentColor, titleColor, bodyColor }: IngredientItemProps) {
+  // Staggered fade in for list items based on their index
+  const startFade = 0.25 + (index * 0.02);
+  const opacity = useTransform(progress, [startFade, startFade + 0.05], [0, 1]);
+  const x = useTransform(progress, [startFade, startFade + 0.05], [-20, 0]);
 
   return (
     <motion.div
-      style={{ opacity, x: tx, y: ty }}
-      className={`absolute z-20 transition-all duration-300 ${className}`}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
+      style={{ opacity, x, borderLeftColor: "rgba(255, 255, 255, 0.1)" }}
+      className="flex flex-col group border-l pl-5 py-1 transition-colors duration-500"
+      onMouseEnter={(e) => {
+        (e.currentTarget as HTMLDivElement).style.borderLeftColor = accentColor;
+      }}
+      onMouseLeave={(e) => {
+        (e.currentTarget as HTMLDivElement).style.borderLeftColor = "rgba(255, 255, 255, 0.1)";
+      }}
     >
-      <div 
-        className="relative flex flex-col items-center justify-center bg-black/60 backdrop-blur-md border px-4 py-2.5 rounded-full transition-all duration-500 hover:scale-105 cursor-pointer"
-        style={{ 
-          borderColor: hovered ? accentColor : "rgba(255, 255, 255, 0.08)",
-          boxShadow: hovered ? `0 0 15px ${accentColor}30` : "none"
-        }}
+      <span 
+        className="font-serif text-lg md:text-xl transition-colors duration-500"
+        style={{ color: titleColor }}
       >
-        <span className="font-serif italic text-xs md:text-sm text-white font-medium">{name}</span>
-        
-        {/* Smooth expand-to-expose description bubble overlay on hover */}
-        <div 
-          className={`overflow-hidden transition-all duration-500 text-[10px] leading-relaxed font-light text-center ${
-            hovered ? "max-h-20 mt-2 opacity-100 w-44 md:w-52" : "max-h-0 opacity-0 w-0"
-          }`}
-          style={{ color: bodyColor }}
-        >
-          {desc}
+        {name}
+      </span>
+      <span 
+        className="font-sans text-xs md:text-sm leading-relaxed mt-2 opacity-80 max-w-sm"
+        style={{ color: bodyColor }}
+      >
+        {desc}
+      </span>
+    </motion.div>
+  );
+}
+
+interface FlavorProgressNavProps {
+  selectedFlavor: Flavor;
+  scrollToSection: (index: number) => void;
+  scrollYProgress: MotionValue<number>;
+}
+
+function FlavorProgressNav({ selectedFlavor, scrollToSection, scrollYProgress }: FlavorProgressNavProps) {
+  const scaleX = useTransform(scrollYProgress, [0, 0.6666], [0, 1]);
+  const opacity = useTransform(scrollYProgress, [0.64, 0.66], [1, 0]);
+
+  return (
+    <motion.div style={{ opacity }} className="fixed bottom-8 md:bottom-12 left-0 w-full z-40 pointer-events-none flex justify-center px-4">
+      <div className="pointer-events-auto max-w-full overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+        <div className="relative flex items-center min-w-[max-content] px-8 md:px-12 py-4 gap-6 md:gap-10">
+          
+          {/* Continuous Track Line (Background) */}
+          <div className="absolute left-4 right-4 bottom-[8px] h-[1px] bg-white/10" />
+          
+          {/* Active Progress Fill */}
+          <motion.div 
+            className="absolute left-4 right-4 bottom-[8px] h-[1px] bg-white/80 origin-left"
+            style={{ scaleX }}
+          />
+
+          {FLAVORS.map((flavor, index) => {
+            const isActive = flavor.id === selectedFlavor.id;
+            return (
+              <button
+                key={flavor.id}
+                onClick={() => scrollToSection(index)}
+                className="relative flex flex-col items-center group pb-3"
+              >
+                <span className={`font-sans text-[9px] md:text-[10px] tracking-[0.3em] uppercase transition-all duration-700 ease-out whitespace-nowrap
+                  ${isActive ? 'text-white opacity-100 font-semibold scale-105' : 'text-white opacity-40 group-hover:opacity-70'}`}
+                >
+                  {flavor.name}
+                </span>
+                
+                {/* Active Indicator Line */}
+                {isActive && (
+                  <motion.div 
+                    layoutId="flavorIndicator"
+                    className="absolute bottom-[8px] left-0 right-0 h-[2px] bg-white"
+                    transition={{ type: "spring", stiffness: 400, damping: 40 }}
+                  />
+                )}
+              </button>
+            )
+          })}
         </div>
       </div>
     </motion.div>

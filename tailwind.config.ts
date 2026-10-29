@@ -22,6 +22,20 @@ const config: Config = {
           caramel: "#B56A2D",
         },
       },
+      animation: {
+        'fade-in': 'fadeIn 1s ease-out forwards',
+        'rise': 'rise 4s ease-in infinite',
+      },
+      keyframes: {
+        fadeIn: {
+          '0%': { opacity: '0', transform: 'translateY(10px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        rise: {
+          '0%': { transform: 'translateY(0) scale(1)', opacity: '1' },
+          '100%': { transform: 'translateY(-200px) scale(0)', opacity: '0' },
+        },
+      },
     },
   },
   plugins: [],
